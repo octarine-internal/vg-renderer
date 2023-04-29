@@ -329,6 +329,7 @@ struct ContextConfig
 	uint32_t m_MaxVBVertices;       // default: 65536
 	uint32_t m_FontAtlasImageFlags; // default: ImageFlags::Filter_Bilinear
 	uint32_t m_MaxCommandListDepth; // default: 16
+	bool     m_MergeVertexStreams;  // default: DX9 only
 };
 
 struct Stats
@@ -408,7 +409,7 @@ void lineTo(Context* ctx, float x, float y);
 void cubicTo(Context* ctx, float c1x, float c1y, float c2x, float c2y, float x, float y);
 void quadraticTo(Context* ctx, float cx, float cy, float x, float y);
 void arcTo(Context* ctx, float x1, float y1, float x2, float y2, float r);
-void arc(Context* ctx, float cx, float cy, float r, float a0, float a1, Winding::Enum dir);
+void arc(Context* ctx, float cx, float cy, float rx, float ry, float a0, float a1, Winding::Enum dir);
 void rect(Context* ctx, float x, float y, float w, float h);
 void roundedRect(Context* ctx, float x, float y, float w, float h, float r);
 void roundedRectVarying(Context* ctx, float x, float y, float w, float h, float rtl, float rtr, float rbr, float rbl);
@@ -426,12 +427,10 @@ void beginClip(Context* ctx, ClipRule::Enum rule);
 void endClip(Context* ctx);
 void resetClip(Context* ctx);
 
-GradientHandle createLinearGradient(Context* ctx, float sx, float sy, float ex, float ey, Color icol, Color ocol);
-GradientHandle createBoxGradient(Context* ctx, float x, float y, float w, float h, float r, float f, Color icol, Color ocol);
-GradientHandle createRadialGradient(Context* ctx, float cx, float cy, float inr, float outr, Color icol, Color ocol);
+GradientHandle createLinearGradient(Context* ctx, float sx, float sy, float ex, float ey, const Color* colors, const float* stops, uint16_t colorCount);
+GradientHandle createRadialGradient(Context* ctx, float cx, float cy, float inr, float outr, const Color* colors, const float* stops, uint16_t colorCount);
 ImagePatternHandle createImagePattern(Context* ctx, float cx, float cy, float w, float h, float angle, ImageHandle image);
 
-void setGlobalAlpha(Context* ctx, float alpha);
 void pushState(Context* ctx);
 void popState(Context* ctx);
 void resetScissor(Context* ctx);
@@ -448,6 +447,7 @@ void getTransform(Context* ctx, float* mtx);
 void getScissor(Context* ctx, float* rect);
 
 FontHandle createFont(Context* ctx, const char* name, uint8_t* data, uint32_t size, uint32_t flags);
+void destroyFont(Context* ctx, FontHandle handle);
 FontHandle getFontByName(Context* ctx, const char* name);
 bool setFallbackFont(Context* ctx, FontHandle base, FontHandle fallback);
 void text(Context* ctx, const TextConfig& cfg, float x, float y, const char* str, const char* end);
@@ -486,6 +486,9 @@ void submitCommandList(Context* ctx, CommandListHandle handle);
 void beginCommandList(Context* ctx, CommandListHandle handle);
 void endCommandList(Context* ctx);
 #endif
+void resetColor(Context* ctx);
+void mulColor(Context* ctx, Color color);
+void setGrayScale(Context* ctx, bool enabled);
 
 void clBeginPath(Context* ctx, CommandListHandle handle);
 void clMoveTo(Context* ctx, CommandListHandle handle, float x, float y);
@@ -493,7 +496,7 @@ void clLineTo(Context* ctx, CommandListHandle handle, float x, float y);
 void clCubicTo(Context* ctx, CommandListHandle handle, float c1x, float c1y, float c2x, float c2y, float x, float y);
 void clQuadraticTo(Context* ctx, CommandListHandle handle, float cx, float cy, float x, float y);
 void clArcTo(Context* ctx, CommandListHandle handle, float x1, float y1, float x2, float y2, float r);
-void clArc(Context* ctx, CommandListHandle handle, float cx, float cy, float r, float a0, float a1, Winding::Enum dir);
+void clArc(Context* ctx, CommandListHandle handle, float cx, float cy, float rx, float ry, float a0, float a1, Winding::Enum dir);
 void clRect(Context* ctx, CommandListHandle handle, float x, float y, float w, float h);
 void clRoundedRect(Context* ctx, CommandListHandle handle, float x, float y, float w, float h, float r);
 void clRoundedRectVarying(Context* ctx, CommandListHandle handle, float x, float y, float w, float h, float rtl, float rtr, float rbr, float rbl);
@@ -512,9 +515,8 @@ void clBeginClip(Context* ctx, CommandListHandle handle, ClipRule::Enum rule);
 void clEndClip(Context* ctx, CommandListHandle handle);
 void clResetClip(Context* ctx, CommandListHandle handle);
 
-GradientHandle clCreateLinearGradient(Context* ctx, CommandListHandle handle, float sx, float sy, float ex, float ey, Color icol, Color ocol);
-GradientHandle clCreateBoxGradient(Context* ctx, CommandListHandle handle, float x, float y, float w, float h, float r, float f, Color icol, Color ocol);
-GradientHandle clCreateRadialGradient(Context* ctx, CommandListHandle handle, float cx, float cy, float inr, float outr, Color icol, Color ocol);
+GradientHandle clCreateLinearGradient(Context* ctx, CommandListHandle handle, float sx, float sy, float ex, float ey, const Color* colors, const float* stops, uint16_t colorCount);
+GradientHandle clCreateRadialGradient(Context* ctx, CommandListHandle handle, float cx, float cy, float inr, float outr, const Color* colors, const float* stops, uint16_t colorCount);
 ImagePatternHandle clCreateImagePattern(Context* ctx, CommandListHandle handle, float cx, float cy, float w, float h, float angle, ImageHandle image);
 
 void clPushState(Context* ctx, CommandListHandle handle);
@@ -533,6 +535,10 @@ void clText(Context* ctx, CommandListHandle handle, const TextConfig& cfg, float
 void clTextBox(Context* ctx, CommandListHandle handle, const TextConfig& cfg, float x, float y, float breakWidth, const char* str, const char* end, uint32_t textboxFlags);
 
 void clSubmitCommandList(Context* ctx, CommandListHandle parent, CommandListHandle child);
+
+void clResetColor(Context* ctx, CommandListHandle handle);
+void clMulColor(Context* ctx, CommandListHandle handle, Color col);
+void clSetGrayScale(Context* ctx, CommandListHandle handle, bool enabled);
 
 //////////////////////////////////////////////////////////////////////////
 // Helpers
@@ -561,7 +567,7 @@ void clMoveTo(CommandListRef& ref, float x, float y);
 void clLineTo(CommandListRef& ref, float x, float y);
 void clCubicTo(CommandListRef& ref, float c1x, float c1y, float c2x, float c2y, float x, float y);
 void clQuadraticTo(CommandListRef& ref, float cx, float cy, float x, float y);
-void clArc(CommandListRef& ref, float cx, float cy, float r, float a0, float a1, Winding::Enum dir);
+void clArc(CommandListRef& ref, float cx, float cy, float rx, float ry, float a0, float a1, Winding::Enum dir);
 void clArcTo(CommandListRef& ref, float x1, float y1, float x2, float y2, float r);
 void clRect(CommandListRef& ref, float x, float y, float w, float h);
 void clRoundedRect(CommandListRef& ref, float x, float y, float w, float h, float r);
@@ -579,9 +585,8 @@ void clStrokePath(CommandListRef& ref, ImagePatternHandle img, Color color, floa
 void clBeginClip(CommandListRef& ref, ClipRule::Enum rule);
 void clEndClip(CommandListRef& ref);
 void clResetClip(CommandListRef& ref);
-GradientHandle clCreateLinearGradient(CommandListRef& ref, float sx, float sy, float ex, float ey, Color icol, Color ocol);
-GradientHandle clCreateBoxGradient(CommandListRef& ref, float x, float y, float w, float h, float r, float f, Color icol, Color ocol);
-GradientHandle clCreateRadialGradient(CommandListRef& ref, float cx, float cy, float inr, float outr, Color icol, Color ocol);
+GradientHandle clCreateLinearGradient(CommandListRef& ref, float sx, float sy, float ex, float ey, const Color* colors, const float* stops, uint16_t colorCount);
+GradientHandle clCreateRadialGradient(CommandListRef& ref, float cx, float cy, float inr, float outr, const Color* colors, const float* stops, uint16_t colorCount);
 ImagePatternHandle clCreateImagePattern(CommandListRef& ref, float cx, float cy, float w, float h, float angle, ImageHandle image);
 void clPushState(CommandListRef& ref);
 void clPopState(CommandListRef& ref);
@@ -596,6 +601,9 @@ void clTransformMult(CommandListRef& ref, const float* mtx, TransformOrder::Enum
 void clText(CommandListRef& ref, const TextConfig& cfg, float x, float y, const char* str, const char* end);
 void clTextBox(CommandListRef& ref, const TextConfig& cfg, float x, float y, float breakWidth, const char* str, const char* end, uint32_t textboxFlags);
 void clSubmitCommandList(CommandListRef& ref, CommandListHandle child);
+void clResetColor(CommandListRef& ref);
+void clMulColor(CommandListRef& ref, Color color);
+void clSetGrayScale(CommandListRef& ref, bool enabled);
 }
 
 #include "inline/vg.inl"

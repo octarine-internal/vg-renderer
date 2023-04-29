@@ -164,9 +164,9 @@ inline void clQuadraticTo(CommandListRef& ref, float cx, float cy, float x, floa
 	clQuadraticTo(ref.m_Context, ref.m_Handle, cx, cy, x, y);
 }
 
-inline void clArc(CommandListRef& ref, float cx, float cy, float r, float a0, float a1, Winding::Enum dir)
+inline void clArc(CommandListRef& ref, float cx, float cy, float rx, float ry, float a0, float a1, Winding::Enum dir)
 {
-	clArc(ref.m_Context, ref.m_Handle, cx, cy, r, a0, a1, dir);
+	clArc(ref.m_Context, ref.m_Handle, cx, cy, rx, ry, a0, a1, dir);
 }
 
 inline void clArcTo(CommandListRef& ref, float x1, float y1, float x2, float y2, float r)
@@ -254,19 +254,14 @@ inline void clResetClip(CommandListRef& ref)
 	clResetClip(ref.m_Context, ref.m_Handle);
 }
 
-inline GradientHandle clCreateLinearGradient(CommandListRef& ref, float sx, float sy, float ex, float ey, Color icol, Color ocol)
+inline GradientHandle clCreateLinearGradient(CommandListRef& ref, float sx, float sy, float ex, float ey, const Color* colors, const float* stops, uint16_t colorCount)
 {
-	return clCreateLinearGradient(ref.m_Context, ref.m_Handle, sx, sy, ex, ey, icol, ocol);
+	return clCreateLinearGradient(ref.m_Context, ref.m_Handle, sx, sy, ex, ey, colors, stops, colorCount);
 }
 
-inline GradientHandle clCreateBoxGradient(CommandListRef& ref, float x, float y, float w, float h, float r, float f, Color icol, Color ocol)
+inline GradientHandle clCreateRadialGradient(CommandListRef& ref, float cx, float cy, float inr, float outr, const Color* colors, const float* stops, uint16_t colorCount)
 {
-	return clCreateBoxGradient(ref.m_Context, ref.m_Handle, x, y, w, h, r, f, icol, ocol);
-}
-
-inline GradientHandle clCreateRadialGradient(CommandListRef& ref, float cx, float cy, float inr, float outr, Color icol, Color ocol)
-{
-	return clCreateRadialGradient(ref.m_Context, ref.m_Handle, cx, cy, inr, outr, icol, ocol);
+	return clCreateRadialGradient(ref.m_Context, ref.m_Handle, cx, cy, inr, outr, colors, stops, colorCount);
 }
 
 inline ImagePatternHandle clCreateImagePattern(CommandListRef& ref, float cx, float cy, float w, float h, float angle, ImageHandle image)
@@ -342,5 +337,20 @@ inline void clTextBox(CommandListRef& ref, const TextConfig& cfg, float x, float
 inline void clSubmitCommandList(CommandListRef& ref, CommandListHandle child)
 {
 	clSubmitCommandList(ref.m_Context, ref.m_Handle, child);
+}
+
+inline void clResetColor(CommandListRef& ref)
+{
+	clResetColor(ref.m_Context, ref.m_Handle);
+}
+
+inline void clMulColor(CommandListRef& ref, Color color)
+{
+	clMulColor(ref.m_Context, ref.m_Handle, color);
+}
+
+inline void clSetGrayScale(CommandListRef& ref, bool enabled)
+{
+	clSetGrayScale(ref.m_Context, ref.m_Handle, enabled);
 }
 }

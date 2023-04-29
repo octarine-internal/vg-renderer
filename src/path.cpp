@@ -26,7 +26,7 @@ Path* createPath(bx::AllocatorI* allocator)
 	bx::memSet(path, 0, sizeof(Path));
 	path->m_Allocator = allocator;
 	path->m_Scale = 1.0f;
-	path->m_TesselationTolerance = 0.25f;
+	path->m_TesselationTolerance = 0.005f;
 	return path;
 }
 
@@ -267,7 +267,7 @@ void pathArcTo(Path* path, float x1, float y1, float x2, float y2, float r)
 		dir = Winding::CCW;
 	}
 
-	pathArc(path, cx, cy, r, a0, a1, dir);
+	pathArc(path, cx, cy, r, r, a0, a1, dir);
 }
 
 void pathRect(Path* path, float x, float y, float w, float h)
@@ -621,7 +621,7 @@ void pathEllipse(Path* path, float cx, float cy, float rx, float ry)
 	pathClose(path);
 }
 
-void pathArc(Path* path, float cx, float cy, float r, float a0, float a1, Winding::Enum dir)
+void pathArc(Path* path, float cx, float cy, float rx, float ry, float a0, float a1, Winding::Enum dir)
 {
 	// a0 and a1 are CW angles from the x axis independent of the selected direction of the arc.
 	// Make sure a0 is always less than a1 and they are both inside the [0, 2*Pi] circle.
@@ -642,7 +642,8 @@ void pathArc(Path* path, float cx, float cy, float r, float a0, float a1, Windin
 		}
 	}
 
-	const float da = bx::acos((path->m_Scale * r) / ((path->m_Scale * r) + path->m_TesselationTolerance)) * 2.0f;
+	const float avgR = (rx + ry) * 0.5f;
+	const float da = bx::acos((path->m_Scale * avgR) / ((path->m_Scale * avgR) + path->m_TesselationTolerance)) * 2.0f;
 	const uint32_t numPoints = bx::uint32_max(2, (uint32_t)bx::ceil(bx::abs(a1 - a0) / da));
 
 	const float dtheta = (a1 - a0) / (float)numPoints;
@@ -652,9 +653,9 @@ void pathArc(Path* path, float cx, float cy, float r, float a0, float a1, Windin
 	float sa = bx::sin(a0);
 
 	if (path->m_CurSubPath && path->m_CurSubPath->m_NumVertices != 0) {
-		pathLineTo(path, cx + r * ca, cy + r * sa);
+		pathLineTo(path, cx + rx * ca, cy + ry * sa);
 	} else {
-		pathMoveTo(path, cx + r * ca, cy + r * sa);
+		pathMoveTo(path, cx + rx * ca, cy + ry * sa);
 	}
 
 	float* circleVertices = pathAllocVertices(path, numPoints);
@@ -664,8 +665,8 @@ void pathArc(Path* path, float cx, float cy, float r, float a0, float a1, Windin
 		ca = nextCos;
 		sa = nextSin;
 
-		circleVertices[0] = cx + r * ca;
-		circleVertices[1] = cy + r * sa;
+		circleVertices[0] = cx + rx * ca;
+		circleVertices[1] = cy + ry * sa;
 		circleVertices += 2;
 	}
 
