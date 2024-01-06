@@ -542,6 +542,7 @@ static void ctxSetScissor(Context* ctx, float x, float y, float w, float h);
 static bool ctxIntersectScissor(Context* ctx, float x, float y, float w, float h);
 static void ctxTransformIdentity(Context* ctx);
 static void ctxTransformScale(Context* ctx, float x, float y);
+static void ctxTranslateBy(Context* ctx, float x, float y);
 static void ctxTransformTranslate(Context* ctx, float x, float y);
 static void ctxTransformRotate(Context* ctx, float ang_rad);
 static void ctxTransformMult(Context* ctx, const float* mtx, TransformOrder::Enum order);
@@ -1685,6 +1686,11 @@ void transformScale(Context* ctx, float x, float y)
 #else
 	ctxTransformScale(ctx, x, y);
 #endif
+}
+
+void transformRelativePx(Context* ctx, float dx, float dy)
+{
+	ctxTranslateBy(ctx, dx, dy);
 }
 
 void transformTranslate(Context* ctx, float x, float y)
@@ -4048,7 +4054,15 @@ static void ctxTransformScale(Context* ctx, float x, float y)
 
 	updateState(state);
 }
+static void ctxTranslateBy(Context* ctx, float dx, float dy)
+{
+	State* state = getState(ctx);
 
+	state->m_TransformMtx[4] += dx;
+	state->m_TransformMtx[5] += dy;
+
+	updateState(state);
+}
 static void ctxTransformTranslate(Context* ctx, float x, float y)
 {
 	State* state = getState(ctx);

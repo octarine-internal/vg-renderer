@@ -438,6 +438,7 @@ void setScissor(Context* ctx, float x, float y, float w, float h);
 bool intersectScissor(Context* ctx, float x, float y, float w, float h);
 void transformIdentity(Context* ctx);
 void transformScale(Context* ctx, float x, float y);
+void transformRelativePx(Context* ctx, float dx, float dy);
 void transformTranslate(Context* ctx, float x, float y);
 void transformRotate(Context* ctx, float ang_rad);
 void transformMult(Context* ctx, const float* mtx, TransformOrder::Enum order);
